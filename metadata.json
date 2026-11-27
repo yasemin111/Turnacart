@@ -1,0 +1,6 @@
+{
+  "name": "El Sihri — Kart Tekniği Koçu",
+  "description": "Yapay zeka destekli, mobil uyumlu ve koyu temalı kart sihirbazlığı koçu. Double Lift ve diğer kart tekniklerini öğrenin, el fotoğrafınızı analiz edin ve canlı kamera ile kas hafızası geliştirin.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

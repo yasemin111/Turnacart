@@ -1,0 +1,241 @@
+{
+  "entities": {
+    "PrivateUserInfo": {
+      "title": "PrivateUserInfo",
+      "description": "Private user account metadata isolated from public learner profiles.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address.",
+          "maxLength": 256
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account creation timestamp."
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "LearnerProfile": {
+      "title": "LearnerProfile",
+      "description": "Public-safe card magic learner progress, active technique, and unlocked achievement badges.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Owner UID.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Learner display name.",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "friendCode": {
+          "type": "string",
+          "description": "Shareable unique friend code.",
+          "minLength": 4,
+          "maxLength": 16,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "currentTechnique": {
+          "type": "string",
+          "description": "Short name of the technique currently practiced.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "currentTechniqueTitle": {
+          "type": "string",
+          "description": "Display title of the active technique.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "xp": {
+          "type": "integer",
+          "description": "Total muscle-memory XP earned."
+        },
+        "streakDays": {
+          "type": "integer",
+          "description": "Consecutive days practiced."
+        },
+        "completedReps": {
+          "type": "integer",
+          "description": "Total full 5-stage live repetitions completed."
+        },
+        "photoChecks": {
+          "type": "integer",
+          "description": "Total photo analyses performed."
+        },
+        "lastPracticeDate": {
+          "type": "string",
+          "description": "ISO date string (YYYY-MM-DD) of last practice.",
+          "maxLength": 20
+        },
+        "unlockedBadgeIds": {
+          "type": "array",
+          "description": "List of unlocked achievement badge IDs (max 20)."
+        },
+        "practicedTechniques": {
+          "type": "array",
+          "description": "Distinct technique names practiced (max 30)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Profile creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last progress update timestamp."
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "friendCode",
+        "currentTechnique",
+        "currentTechniqueTitle",
+        "xp",
+        "streakDays",
+        "completedReps",
+        "photoChecks",
+        "lastPracticeDate",
+        "unlockedBadgeIds",
+        "practicedTechniques",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FriendCodeLookup": {
+      "title": "FriendCodeLookup",
+      "description": "Maps a unique friend code to a learner UID for invite lookup.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "ownerId", "displayName", "createdAt"]
+    },
+    "FriendEdge": {
+      "title": "FriendEdge",
+      "description": "Represents an added friend connection owned by a user.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "friendUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "friendCode": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 16,
+          "pattern": "^[A-Z0-9\\-]+$"
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "friendUid", "displayName", "friendCode", "addedAt"]
+    },
+    "CoLearningNudge": {
+      "title": "CoLearningNudge",
+      "description": "A practice cheer or technique invitation sent between friends.",
+      "type": "object",
+      "properties": {
+        "fromUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "toUid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fromName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "techniqueName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["fromUid", "toUid", "fromName", "techniqueName", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/PrivateUserInfo" },
+      "description": "Isolated private PII storage for each authenticated user."
+    },
+    "/users/{userId}/friends/{friendUid}": {
+      "schema": { "$ref": "#/entities/FriendEdge" },
+      "description": "Friends added by the user to follow their learning progress."
+    },
+    "/learners/{userId}": {
+      "schema": { "$ref": "#/entities/LearnerProfile" },
+      "description": "Public-safe learning profile with active technique, XP, streak, and achievement badges."
+    },
+    "/learners/{learnerId}/nudges/{nudgeId}": {
+      "schema": { "$ref": "#/entities/CoLearningNudge" },
+      "description": "Co-learning cheers and practice invites received from friends."
+    },
+    "/friendCodes/{code}": {
+      "schema": { "$ref": "#/entities/FriendCodeLookup" },
+      "description": "Exact-lookup index mapping short friend codes to learner UIDs."
+    }
+  }
+}

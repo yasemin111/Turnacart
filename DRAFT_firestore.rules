@@ -1,0 +1,220 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidFriendCodeId(code) {
+      return code is string && code.size() >= 4 && code.size() <= 16 && code.matches('^[A-Z0-9\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Entity validation helpers
+    function isValidPrivateUserInfo(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'createdAt'])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 256
+        && data.createdAt is timestamp;
+    }
+
+    function isValidLearnerProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'displayName', 'friendCode', 'currentTechnique', 'currentTechniqueTitle',
+          'xp', 'streakDays', 'completedReps', 'photoChecks', 'lastPracticeDate',
+          'unlockedBadgeIds', 'practicedTechniques', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'displayName', 'friendCode', 'currentTechnique', 'currentTechniqueTitle',
+          'xp', 'streakDays', 'completedReps', 'photoChecks', 'lastPracticeDate',
+          'unlockedBadgeIds', 'practicedTechniques', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 50
+        && isValidFriendCodeId(data.friendCode)
+        && data.currentTechnique is string && data.currentTechnique.size() >= 1 && data.currentTechnique.size() <= 80
+        && data.currentTechniqueTitle is string && data.currentTechniqueTitle.size() >= 1 && data.currentTechniqueTitle.size() <= 120
+        && data.xp is int && data.xp >= 0 && data.xp <= 10000000
+        && data.streakDays is int && data.streakDays >= 0 && data.streakDays <= 36500
+        && data.completedReps is int && data.completedReps >= 0 && data.completedReps <= 1000000
+        && data.photoChecks is int && data.photoChecks >= 0 && data.photoChecks <= 1000000
+        && data.lastPracticeDate is string && data.lastPracticeDate.size() <= 20
+        && data.unlockedBadgeIds is list && data.unlockedBadgeIds.size() <= 20
+        && (data.unlockedBadgeIds.size() == 0 || data.unlockedBadgeIds[0] is string)
+        && data.practicedTechniques is list && data.practicedTechniques.size() <= 30
+        && (data.practicedTechniques.size() == 0 || data.practicedTechniques[0] is string)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFriendCodeLookup(data) {
+      return data.keys().hasAll(['uid', 'ownerId', 'displayName', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'ownerId', 'displayName', 'createdAt'])
+        && isValidId(data.uid)
+        && isValidId(data.ownerId)
+        && data.uid == request.auth.uid
+        && data.ownerId == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 50
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFriendEdge(data, userId, friendUid) {
+      return data.keys().hasAll(['ownerId', 'friendUid', 'displayName', 'friendCode', 'addedAt'])
+        && data.keys().hasOnly(['ownerId', 'friendUid', 'displayName', 'friendCode', 'addedAt'])
+        && isValidId(data.ownerId)
+        && isValidId(data.friendUid)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.friendUid == friendUid
+        && data.friendUid != userId
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 50
+        && isValidFriendCodeId(data.friendCode)
+        && data.addedAt is timestamp;
+    }
+
+    function isValidCoLearningNudge(data, learnerId) {
+      return data.keys().hasAll(['fromUid', 'toUid', 'fromName', 'techniqueName', 'message', 'createdAt'])
+        && data.keys().hasOnly(['fromUid', 'toUid', 'fromName', 'techniqueName', 'message', 'createdAt'])
+        && isValidId(data.fromUid)
+        && isValidId(data.toUid)
+        && data.fromUid == request.auth.uid
+        && data.toUid == learnerId
+        && data.fromName is string && data.fromName.size() >= 1 && data.fromName.size() <= 50
+        && data.techniqueName is string && data.techniqueName.size() >= 1 && data.techniqueName.size() <= 80
+        && data.message is string && data.message.size() >= 1 && data.message.size() <= 160
+        && data.createdAt is timestamp;
+    }
+
+    // 1. Isolated private user PII
+    match /users/{userId}/private/{docId} {
+      allow get: if isValidId(userId) && isValidId(docId) && isOwner(userId);
+      allow list: if isOwner(userId) && resource.data.uid == request.auth.uid;
+      allow create: if isValidId(userId)
+        && docId == 'info'
+        && isEmailVerified()
+        && isOwner(userId)
+        && isValidPrivateUserInfo(incoming(), userId)
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(userId) && isOwner(userId);
+    }
+
+    // 2. User's friend edges
+    match /users/{userId}/friends/{friendUid} {
+      allow get: if isValidId(userId) && isValidId(friendUid) && isOwner(userId);
+      allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+      allow create: if isValidId(userId)
+        && isValidId(friendUid)
+        && isEmailVerified()
+        && isOwner(userId)
+        && isValidFriendEdge(incoming(), userId, friendUid)
+        && incoming().addedAt == request.time
+        && exists(/databases/$(database)/documents/learners/$(friendUid));
+      allow update: if false;
+      allow delete: if isValidId(userId) && isValidId(friendUid) && isOwner(userId);
+    }
+
+    // 3. Learner profiles (public-safe, readable by owner or friends)
+    match /learners/{userId} {
+      allow get: if isValidId(userId) && (
+        isOwner(userId) ||
+        (isEmailVerified() && exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId)))
+      );
+      allow list: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isValidId(userId)
+        && isEmailVerified()
+        && isOwner(userId)
+        && isValidLearnerProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isEmailVerified()
+        && isOwner(userId)
+        && isValidLearnerProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().friendCode == existing().friendCode
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'currentTechnique',
+          'currentTechniqueTitle',
+          'xp',
+          'streakDays',
+          'completedReps',
+          'photoChecks',
+          'lastPracticeDate',
+          'unlockedBadgeIds',
+          'practicedTechniques',
+          'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      // 4. Co-learning nudges / practice invites from friends
+      match /nudges/{nudgeId} {
+        allow get: if isValidId(userId) && isValidId(nudgeId) && isOwner(userId);
+        allow list: if isOwner(userId) && resource.data.toUid == request.auth.uid;
+        allow create: if isValidId(userId)
+          && isValidId(nudgeId)
+          && isEmailVerified()
+          && isValidCoLearningNudge(incoming(), userId)
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/users/$(request.auth.uid)/friends/$(userId));
+        allow update: if false;
+        allow delete: if isValidId(userId) && isValidId(nudgeId) && isOwner(userId);
+      }
+    }
+
+    // 5. Friend code exact lookup index
+    match /friendCodes/{code} {
+      allow get: if isValidFriendCodeId(code) && isEmailVerified();
+      allow list: if false;
+      allow create: if isValidFriendCodeId(code)
+        && isEmailVerified()
+        && isValidFriendCodeLookup(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if isValidFriendCodeId(code)
+        && isEmailVerified()
+        && existing().ownerId == request.auth.uid
+        && isValidFriendCodeLookup(incoming())
+        && incoming().uid == existing().uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName']);
+      allow delete: if isValidFriendCodeId(code)
+        && isSignedIn()
+        && existing().ownerId == request.auth.uid;
+    }
+  }
+}
